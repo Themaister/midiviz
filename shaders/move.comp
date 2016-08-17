@@ -1,0 +1,77 @@
+#version 310 es
+
+struct Params
+{
+   float delta;
+   float period;
+   float kick;
+   float kick_beat;
+   float snare;
+   float snare_beat;
+};
+
+#define BASE_STRUCT Params
+#include "compute.inc"
+#include "noise.inc"
+
+vec3 gray(vec3 c)
+{
+   // Weigh all colors equally
+   float y = dot(c, vec3(0.333));
+   return vec3(y);
+}
+
+vec2 noise2(vec2 pos)
+{
+   vec2 x = pos * 20.0;
+   float u = snoise(x);
+   float v = snoise(x + 17.0);
+   return vec2(u, v);
+}
+
+float wave(float y, float center, float s, float phase)
+{
+   float diff = y - (2.0 * center - 1.0);
+   diff *= s;
+
+   if (diff >= 0.0)
+      return 0.0;
+   else
+      return s * exp2(15.0 * diff - 8.0 * phase);
+}
+
+float kick_wave(float y)
+{
+   return 10.0 * registers.params.kick *
+      wave(y, registers.params.kick_beat, -1.0, fract(1.0 - registers.params.kick_beat));
+}
+
+float snare_wave(float y)
+{
+   return 15.0 * registers.params.snare *
+      wave(y, registers.params.snare_beat, 1.0, fract(registers.params.snare_beat));
+}
+
+void main()
+{
+   vec2 pos = read_position();
+   vec2 vel = read_velocity();
+   vec4 color = read_color();
+
+   if (color.a < 0.25)
+      return;
+
+   float delta = registers.params.delta;
+   pos += vel * delta;
+   color.a -= delta * 0.5 * color.a;
+   color.rgb = mix(color.rgb, gray(color.rgb), 0.5 * length(vel) * delta);
+
+   float weight = 1.0 / color.a;
+
+   vel += 0.5 * noise2(3.0 * pos + registers.params.period) * weight;
+   vel.y += (kick_wave(pos.y) + snare_wave(pos.y)) * weight;
+
+   write_position(pos);
+   write_velocity(vel);
+   write_color(color);
+}

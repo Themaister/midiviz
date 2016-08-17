@@ -1,0 +1,29 @@
+#version 310 es
+struct Params
+{
+   float key;
+   float vel;
+};
+#define BASE_STRUCT Params
+#include "compute.inc"
+
+#define PI 3.1415
+
+void main()
+{
+   uint num_particles = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+   uint ident = gl_GlobalInvocationID.x;
+   float phase = 2.0 * float(ident) / float(num_particles);
+   float frac_phase = fract(phase);
+   phase = 0.5 * PI + floor(phase) * PI + 0.9 * (frac_phase - 0.5);
+
+   vec2 vel = 0.8 * registers.params.vel * vec2(cos(phase), sin(phase));
+   vec2 pos = vel * 0.1;
+   pos.x += 0.09 * (registers.params.key - 66.0);
+   pos.y = 0.0;
+
+   vec4 color = vec4(abs(vel.x), abs(vel.y), 0.5, 7.5);
+   write_position(pos);
+   write_velocity(vel);
+   write_color(color);
+}

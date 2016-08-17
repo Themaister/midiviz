@@ -1,0 +1,14 @@
+#version 310 es
+#include "compute.inc"
+
+void main()
+{
+   float phase = 6.28 * float(gl_GlobalInvocationID.x) / float(gl_NumWorkGroups.x * gl_WorkGroupSize.x);
+
+   vec2 vel = vec2(cos(phase), sin(phase));
+   vec2 pos = vel * 0.2;
+   vec4 color = vec4(vel.x, vel.y, 0.5, 10.0);
+   write_position(pos);
+   write_velocity(vel);
+   write_color(color);
+}
